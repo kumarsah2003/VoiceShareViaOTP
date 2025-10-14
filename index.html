@@ -94,7 +94,7 @@
     <audio id="receivedAudio" controls></audio>
   </div>
 
-  <!-- ==== Recording and Upload Script ==== -->
+  <!-- ==== Recording Script ==== -->
   <script>
     let mediaRecorder;
     let audioChunks = [];
@@ -137,7 +137,7 @@
     };
   </script>
 
-  <!-- ==== Firebase SDK ==== -->
+  <!-- ==== Firebase SDK Script ==== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
@@ -146,7 +146,7 @@
       apiKey: "AIzaSyBRC4S2XqI2HXZC60X4RDw9ZDk3p6EOsCo",
       authDomain: "voicerecorderproject-fa667.firebaseapp.com",
       projectId: "voicerecorderproject-fa667",
-      storageBucket: "voicerecorderproject-fa667.firebasestorage.app",
+      storageBucket: "voicerecorderproject-fa667.appspot.com", // ✅ corrected
       messagingSenderId: "793867174803",
       appId: "1:793867174803:web:f5b02c9ccf3d61eda9de66",
       measurementId: "G-1LFN5S1WYK"
@@ -176,4 +176,3 @@
 
 </body>
 </html>
-
