@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice Share via OTP</title>
+  <title>Voice Share via OTP (File.io)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
       color: white;
       height: 100vh;
       display: flex;
@@ -15,23 +15,16 @@
       align-items: center;
       margin: 0;
     }
-
     .container {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
       padding: 30px;
       border-radius: 15px;
       text-align: center;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 30px rgba(0,0,0,0.3);
       width: 90%;
       max-width: 400px;
     }
-
-    h2 {
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-
     button {
       background: #00c6ff;
       border: none;
@@ -43,16 +36,8 @@
       font-size: 16px;
       transition: 0.3s;
     }
-
-    button:hover {
-      background: #0072ff;
-    }
-
-    button:disabled {
-      background: gray;
-      cursor: not-allowed;
-    }
-
+    button:hover { background: #0072ff; }
+    button:disabled { background: gray; cursor: not-allowed; }
     input {
       padding: 10px;
       border-radius: 8px;
@@ -61,12 +46,7 @@
       margin-top: 10px;
       text-align: center;
     }
-
-    audio {
-      width: 100%;
-      margin-top: 15px;
-    }
-
+    audio { width: 100%; margin-top: 15px; }
     #otpDisplay {
       font-size: 18px;
       margin-top: 10px;
@@ -89,7 +69,7 @@
     <hr style="border: 1px solid white; opacity: 0.4;">
 
     <input id="otpInput" placeholder="Enter OTP to get audio">
-    <button id="getBtn">Get Audio</button>
+    <button id="getAudioBtn">Get Audio</button>
 
     <audio id="receivedAudio" controls></audio>
   </div>
@@ -98,18 +78,20 @@
     let mediaRecorder;
     let audioChunks = [];
     let recordedBlob;
+    const otpMap = {}; // local map for OTP → link (temporary use)
 
     const recordBtn = document.getElementById("recordBtn");
     const stopBtn = document.getElementById("stopBtn");
     const sendBtn = document.getElementById("sendBtn");
     const otpDisplay = document.getElementById("otpDisplay");
-    const getBtn = document.getElementById("getBtn");
+    const getAudioBtn = document.getElementById("getAudioBtn");
 
     recordBtn.onclick = async () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
       mediaRecorder.start();
+
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
       recordBtn.disabled = true;
@@ -121,7 +103,7 @@
     stopBtn.onclick = () => {
       mediaRecorder.stop();
       mediaRecorder.onstop = () => {
-        recordedBlob = new Blob(audioChunks, { type: "audio/wav" });
+        recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
         stopBtn.disabled = true;
         recordBtn.disabled = false;
         sendBtn.disabled = false;
@@ -130,52 +112,34 @@
 
     sendBtn.onclick = async () => {
       if (!recordedBlob) return alert("No audio recorded!");
+      sendBtn.disabled = true;
+
       const otp = Math.floor(100000 + Math.random() * 900000);
       otpDisplay.textContent = "Your OTP: " + otp;
-      await uploadAudio(recordedBlob, otp);
-      sendBtn.disabled = true;
-    };
 
-    getBtn.onclick = () => {
-      const otp = document.getElementById("otpInput").value.trim();
-      if (!otp) return alert("Enter OTP!");
-      getAudio(otp);
-    };
-  </script>
+      const formData = new FormData();
+      formData.append("file", recordedBlob, "audio.webm");
 
-  <!-- ==== Firebase Script ==== -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+      const res = await fetch("https://file.io/?expires=1d", {
+        method: "POST",
+        body: formData
+      });
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBRC4S2XqI2HXZC60X4RDw9ZDk3p6EOsCo",
-      authDomain: "voicerecorderproject-fa667.firebaseapp.com",
-      projectId: "voicerecorderproject-fa667",
-      storageBucket: "voicerecorderproject-fa667.appspot.com", // ✅ fixed
-      messagingSenderId: "793867174803",
-      appId: "1:793867174803:web:f5b02c9ccf3d61eda9de66",
-      measurementId: "G-1LFN5S1WYK"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const storage = getStorage(app);
-
-    window.uploadAudio = async (blob, otp) => {
-      const audioRef = ref(storage, `recordings/${otp}.wav`);
-      await uploadBytes(audioRef, blob);
-      alert("✅ Audio uploaded successfully!\nShare this OTP: " + otp);
-    };
-
-    window.getAudio = async (otp) => {
-      const audioRef = ref(storage, `recordings/${otp}.wav`);
-      try {
-        const url = await getDownloadURL(audioRef);
-        document.getElementById("receivedAudio").src = url;
-      } catch (error) {
-        alert("❌ Invalid OTP or file not found!");
+      const data = await res.json();
+      if (data.success) {
+        otpMap[otp] = data.link; // store OTP and link
+        alert("Audio uploaded! Share this OTP: " + otp);
+      } else {
+        alert("Upload failed. Try again.");
       }
     };
+
+    getAudioBtn.onclick = async () => {
+      const otp = document.getElementById("otpInput").value.trim();
+      if (!otpMap[otp]) return alert("Invalid OTP or audio expired!");
+      document.getElementById("receivedAudio").src = otpMap[otp];
+    };
   </script>
+
 </body>
 </html>
