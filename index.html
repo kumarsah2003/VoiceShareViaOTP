@@ -3,60 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice Share via OTP (File.io)</title>
+  <title>Voice Share via OTP</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #6a11cb, #2575fc);
-      color: white;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
-    }
-    .container {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(10px);
-      padding: 30px;
-      border-radius: 15px;
-      text-align: center;
-      box-shadow: 0 4px 30px rgba(0,0,0,0.3);
-      width: 90%;
-      max-width: 400px;
-    }
-    button {
-      background: #00c6ff;
-      border: none;
-      color: white;
-      padding: 12px 20px;
-      margin: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: 0.3s;
-    }
-    button:hover { background: #0072ff; }
-    button:disabled { background: gray; cursor: not-allowed; }
-    input {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      width: 80%;
-      margin-top: 10px;
-      text-align: center;
-    }
-    audio { width: 100%; margin-top: 15px; }
-    #otpDisplay {
-      font-size: 18px;
-      margin-top: 10px;
-      color: #ffeb3b;
-      font-weight: bold;
-    }
+    body { font-family: Arial,sans-serif; background: linear-gradient(135deg,#6a11cb,#2575fc); color:white; height:100vh; display:flex; justify-content:center; align-items:center; margin:0; }
+    .container { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); padding:30px; border-radius:15px; text-align:center; box-shadow:0 4px 30px rgba(0,0,0,0.3); width:90%; max-width:400px; }
+    button { background:#00c6ff; border:none; color:white; padding:12px 20px; margin:10px; border-radius:8px; cursor:pointer; font-size:16px; transition:0.3s; }
+    button:hover { background:#0072ff; }
+    button:disabled { background:gray; cursor:not-allowed; }
+    input { padding:10px; border-radius:8px; border:none; width:80%; margin-top:10px; text-align:center; }
+    audio { width:100%; margin-top:15px; }
+    #otpDisplay { font-size:18px; margin-top:10px; color:#ffeb3b; font-weight:bold; }
   </style>
 </head>
 <body>
-
   <div class="container">
     <h2>🎙 Voice Share via OTP</h2>
 
@@ -66,7 +25,7 @@
 
     <p id="otpDisplay"></p>
 
-    <hr style="border: 1px solid white; opacity: 0.4;">
+    <hr style="border:1px solid white; opacity:0.4;">
 
     <input id="otpInput" placeholder="Enter OTP to get audio">
     <button id="getAudioBtn">Get Audio</button>
@@ -75,11 +34,7 @@
   </div>
 
   <script>
-    let mediaRecorder;
-    let audioChunks = [];
-    let recordedBlob;
-    const otpMap = {}; // local map for OTP → link (temporary use)
-
+    let mediaRecorder, audioChunks = [], recordedBlob;
     const recordBtn = document.getElementById("recordBtn");
     const stopBtn = document.getElementById("stopBtn");
     const sendBtn = document.getElementById("sendBtn");
@@ -87,59 +42,68 @@
     const getAudioBtn = document.getElementById("getAudioBtn");
 
     recordBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
       mediaRecorder.start();
-
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-
-      recordBtn.disabled = true;
-      stopBtn.disabled = false;
-      sendBtn.disabled = true;
-      otpDisplay.textContent = "";
+      recordBtn.disabled = true; stopBtn.disabled = false; sendBtn.disabled = true; otpDisplay.textContent = "";
     };
 
     stopBtn.onclick = () => {
       mediaRecorder.stop();
-      mediaRecorder.onstop = () => {
-        recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
-        stopBtn.disabled = true;
-        recordBtn.disabled = false;
-        sendBtn.disabled = false;
-      };
-    };
-
-    sendBtn.onclick = async () => {
-      if (!recordedBlob) return alert("No audio recorded!");
-      sendBtn.disabled = true;
-
-      const otp = Math.floor(100000 + Math.random() * 900000);
-      otpDisplay.textContent = "Your OTP: " + otp;
-
-      const formData = new FormData();
-      formData.append("file", recordedBlob, "audio.webm");
-
-      const res = await fetch("https://file.io/?expires=1d", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        otpMap[otp] = data.link; // store OTP and link
-        alert("Audio uploaded! Share this OTP: " + otp);
-      } else {
-        alert("Upload failed. Try again.");
-      }
-    };
-
-    getAudioBtn.onclick = async () => {
-      const otp = document.getElementById("otpInput").value.trim();
-      if (!otpMap[otp]) return alert("Invalid OTP or audio expired!");
-      document.getElementById("receivedAudio").src = otpMap[otp];
+      mediaRecorder.onstop = () => { recordedBlob = new Blob(audioChunks,{ type:"audio/webm" }); stopBtn.disabled=false; recordBtn.disabled=false; sendBtn.disabled=false; };
     };
   </script>
 
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvbTWhLEEOY8nwvcJ8aEc7IojoVEQqov0",
+      authDomain: "voice-otp-project-c9ae9.firebaseapp.com",
+      projectId: "voice-otp-project-c9ae9",
+      storageBucket: "voice-otp-project-c9ae9.appspot.com",
+      messagingSenderId: "769163024663",
+      appId: "1:769163024663:web:4f5a7e969e1ba07b1ebf52"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Send button
+    const sendBtn = document.getElementById("sendBtn");
+    sendBtn.onclick = async () => {
+      if (!recordedBlob) return alert("No audio recorded!");
+      sendBtn.disabled=true;
+      const otp = Math.floor(100000 + Math.random()*900000);
+      otpDisplay.textContent = "Your OTP: "+otp;
+
+      // Upload audio to File.io
+      const formData = new FormData();
+      formData.append("file", recordedBlob,"audio.webm");
+      const res = await fetch("https://file.io/?expires=1d",{ method:"POST", body:formData });
+      const data = await res.json();
+
+      if(data.success){
+        await setDoc(doc(db,"voiceLinks",otp.toString()),{ link:data.link });
+        alert("Audio uploaded! Share OTP: "+otp);
+      } else { alert("Upload failed!"); }
+    };
+
+    // Get Audio button
+    const getAudioBtn = document.getElementById("getAudioBtn");
+    getAudioBtn.onclick = async () => {
+      const otp = document.getElementById("otpInput").value.trim();
+      const docRef = doc(db,"voiceLinks",otp);
+      const docSnap = await getDoc(docRef);
+      if(docSnap.exists()){
+        document.getElementById("receivedAudio").src = docSnap.data().link;
+      } else { alert("Invalid OTP or expired audio!"); }
+    };
+  </script>
 </body>
 </html>
