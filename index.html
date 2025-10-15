@@ -33,6 +33,7 @@
     <audio id="receivedAudio" controls></audio>
   </div>
 
+  <!-- Recording Script -->
   <script>
     let mediaRecorder, audioChunks = [], recordedBlob;
     const recordBtn = document.getElementById("recordBtn");
@@ -52,7 +53,10 @@
 
     stopBtn.onclick = () => {
       mediaRecorder.stop();
-      mediaRecorder.onstop = () => { recordedBlob = new Blob(audioChunks,{ type:"audio/webm" }); stopBtn.disabled=false; recordBtn.disabled=false; sendBtn.disabled=false; };
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(audioChunks,{ type:"audio/webm" });
+        stopBtn.disabled = true; recordBtn.disabled = false; sendBtn.disabled = false;
+      };
     };
   </script>
 
@@ -60,8 +64,9 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
 
-    // Your Firebase config
+    // ✅ Replace with your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCvbTWhLEEOY8nwvcJ8aEc7IojoVEQqov0",
       authDomain: "voice-otp-project-c9ae9.firebaseapp.com",
@@ -73,36 +78,36 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
     // Send button
-    const sendBtn = document.getElementById("sendBtn");
     sendBtn.onclick = async () => {
-      if (!recordedBlob) return alert("No audio recorded!");
-      sendBtn.disabled=true;
-      const otp = Math.floor(100000 + Math.random()*900000);
-      otpDisplay.textContent = "Your OTP: "+otp;
+      if(!recordedBlob) return alert("No audio recorded!");
+      sendBtn.disabled = true;
 
-      // Upload audio to File.io
-      const formData = new FormData();
-      formData.append("file", recordedBlob,"audio.webm");
-      const res = await fetch("https://file.io/?expires=1d",{ method:"POST", body:formData });
-      const data = await res.json();
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      otpDisplay.textContent = "Your OTP: " + otp;
 
-      if(data.success){
-        await setDoc(doc(db,"voiceLinks",otp.toString()),{ link:data.link });
-        alert("Audio uploaded! Share OTP: "+otp);
-      } else { alert("Upload failed!"); }
+      const audioRef = ref(storage, `recordings/${otp}.webm`);
+      await uploadBytes(audioRef, recordedBlob);
+
+      const downloadURL = await getDownloadURL(audioRef);
+      await setDoc(doc(db,"voiceLinks",otp.toString()),{ link: downloadURL });
+
+      alert("Audio uploaded! Share this OTP: "+otp);
     };
 
     // Get Audio button
-    const getAudioBtn = document.getElementById("getAudioBtn");
     getAudioBtn.onclick = async () => {
       const otp = document.getElementById("otpInput").value.trim();
+      if(!otp) return alert("Enter OTP!");
       const docRef = doc(db,"voiceLinks",otp);
       const docSnap = await getDoc(docRef);
       if(docSnap.exists()){
         document.getElementById("receivedAudio").src = docSnap.data().link;
-      } else { alert("Invalid OTP or expired audio!"); }
+      } else {
+        alert("Invalid OTP or audio not found!");
+      }
     };
   </script>
 </body>
