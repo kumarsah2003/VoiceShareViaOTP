@@ -89,12 +89,11 @@
     <hr style="border: 1px solid white; opacity: 0.4;">
 
     <input id="otpInput" placeholder="Enter OTP to get audio">
-    <button onclick="getAudio(document.getElementById('otpInput').value)">Get Audio</button>
+    <button id="getBtn">Get Audio</button>
 
     <audio id="receivedAudio" controls></audio>
   </div>
 
-  <!-- ==== Recording Script ==== -->
   <script>
     let mediaRecorder;
     let audioChunks = [];
@@ -104,6 +103,7 @@
     const stopBtn = document.getElementById("stopBtn");
     const sendBtn = document.getElementById("sendBtn");
     const otpDisplay = document.getElementById("otpDisplay");
+    const getBtn = document.getElementById("getBtn");
 
     recordBtn.onclick = async () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -135,9 +135,15 @@
       await uploadAudio(recordedBlob, otp);
       sendBtn.disabled = true;
     };
+
+    getBtn.onclick = () => {
+      const otp = document.getElementById("otpInput").value.trim();
+      if (!otp) return alert("Enter OTP!");
+      getAudio(otp);
+    };
   </script>
 
-  <!-- ==== Firebase SDK Script ==== -->
+  <!-- ==== Firebase Script ==== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
@@ -146,7 +152,7 @@
       apiKey: "AIzaSyBRC4S2XqI2HXZC60X4RDw9ZDk3p6EOsCo",
       authDomain: "voicerecorderproject-fa667.firebaseapp.com",
       projectId: "voicerecorderproject-fa667",
-      storageBucket: "voicerecorderproject-fa667.appspot.com", // ✅ corrected
+      storageBucket: "voicerecorderproject-fa667.appspot.com", // ✅ fixed
       messagingSenderId: "793867174803",
       appId: "1:793867174803:web:f5b02c9ccf3d61eda9de66",
       measurementId: "G-1LFN5S1WYK"
@@ -155,24 +161,21 @@
     const app = initializeApp(firebaseConfig);
     const storage = getStorage(app);
 
-    // Upload function
     window.uploadAudio = async (blob, otp) => {
       const audioRef = ref(storage, `recordings/${otp}.wav`);
       await uploadBytes(audioRef, blob);
-      alert("Audio uploaded successfully! Share this OTP: " + otp);
+      alert("✅ Audio uploaded successfully!\nShare this OTP: " + otp);
     };
 
-    // Get audio function
     window.getAudio = async (otp) => {
       const audioRef = ref(storage, `recordings/${otp}.wav`);
       try {
         const url = await getDownloadURL(audioRef);
         document.getElementById("receivedAudio").src = url;
       } catch (error) {
-        alert("Invalid OTP or file not found!");
+        alert("❌ Invalid OTP or file not found!");
       }
     };
   </script>
-
 </body>
 </html>
